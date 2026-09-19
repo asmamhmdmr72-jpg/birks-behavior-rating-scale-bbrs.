@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<!-- saved from url=(0012)about:srcdoc -->
+<html lang="en" dir="rtl"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+				
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<style>
+					body {
+						background-color: white; /* Ensure the iframe has a white background */
+					}
+				</style>
+				<script>
+					var Z_CDN_WHITELIST = [
+						'cdn.jsdelivr.net',
+						'cdnjs.cloudflare.com',
+						'cdn.tailwindcss.com',
+						'unpkg.com',
+						'fonts.googleapis.com',
+						'd3js.org',
+						'cdn.babylonjs.com',
+						'html2canvas.hertzen.com',
+						'code.jquery.com',
+						'cdn.datatables.net',
+						'kit.fontawesome.com',
+						'code.createjs.com',
+						'cdn.plot.ly',
+						'fonts.gstatic.com',
+						'www.rgraph.net',
+						'api.mapbox.com',
+						'polyfill.io',
+						'cdn.quilljs.com',
+						'picsum.photos',
+						'esm.sh'
+					];
+
+					function z_isUrlInWhitelist(url) {
+						if (!url || typeof url !== 'string') {
+							return false;
+						}
+						try {
+							const urlObj = new URL(url);
+							const hostname = urlObj.hostname;
+							return Z_CDN_WHITELIST.some(domain => hostname === domain);
+						} catch (e) {
+							return false;
+						}
+					}
+
+						function z_proxyCdnUrl(url) {
+						if (!url || !url.startsWith('http')) {
+							return url;
+						}
+							if (!z_isUrlInWhitelist(url)) {
+							return url;
+						}
+						if (!url.startsWith('https://artifacts-cdn.chatglm.site/')) {
+							return 'https://artifacts-cdn.chatglm.site/' + url;
+						}
+						return url;
+					}
+					
+					// 增强版外部链接拦截 - 适合放在模板字符串中
+					document.addEventListener('click', function (ev) {
+						try {
+							const anchor = ev.target?.closest?.('a[href]') || null;
+							if (!anchor) return;
+
+							let href = anchor.getAttribute('href')?.trim() || '';
+							if (!href) return;
+
+							if (href.startsWith('javascript:')) return;
+
+							// 新需求：href="#" 的链接完全阻止跳转和任何行为
+							if (href === '#') {
+								ev.preventDefault();
+								return;
+							}
+
+							// 处理其他内部锚点（如 #about、#contact 等）
+							if (href.startsWith('#')) {
+								const rawId = href.slice(1);
+								if (!rawId) return;
+
+								const id = decodeURIComponent(rawId);
+								const target = 
+									document.getElementById(id) ||
+									document.querySelector('a[name="' + id.replace(/"/g, '\"') + '"]') ||
+									document.querySelector('[name="' + id.replace(/"/g, '\"') + '"]');
+
+								if (target && target.scrollIntoView) {
+									ev.preventDefault();
+									try {
+										history.pushState(null, '', href);
+									} catch (e) {}
+									target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+								}
+								return;
+							}
+
+							// 处理外部链接
+							let url;
+							try {
+								url = new URL(href, window.location.href);
+							} catch (e) {
+								return;
+							}
+
+							if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+							const isExternal = url.hostname !== window.location.hostname;
+
+							if (isExternal || anchor.getAttribute('target') === '_blank') {
+								ev.preventDefault();
+								window.open(url.toString(), '_blank', 'noopener,noreferrer');
+							}
+
+						} catch (e) {
+							// 出错时不阻止默认行为
+						}
+					}, true);
+
+					// 1. 暴力清除函数：从 DOM 层面抹除 onclick 属性
+					var Z_removeInlineOnclick = function () {
+						// 专门锁定 href="#" 且带有 onclick 的 a 标签
+						const targetedLinks = document.querySelectorAll('a[href="#"][onclick]');
+						for (let i = 0; i < targetedLinks.length; i++) {
+							targetedLinks[i].removeAttribute('onclick');
+							targetedLinks[i].onclick = null; // 确保 JS 层的赋值也被清理
+						}
+					};
+					// 3. 动态监测：防止页面通过异步加载重新生成带 onclick 的元素
+					var z_observer = new MutationObserver(function () {
+						Z_removeInlineOnclick();
+					});
+
+					z_observer.observe(document.documentElement, {
+						childList: true,
+						subtree: true,
+						attributes: true,
+						attributeFilter: ['onclick']
+					});
+
+					// 4. 初始化执行一次
+					Z_removeInlineOnclick();
+
+					const Z_rawCreateElement = document.createElement;
+
+					document.createElement = function (tagName, ...args) {
+						const el = Z_rawCreateElement.call(this, tagName, ...args);
+
+						if (tagName.toLowerCase() === 'script') {
+							const rawSetAttribute = el.setAttribute;
+							const rawGetAttribute = el.getAttribute;
+							let srcValue = '';
+							
+							el.setAttribute = function (name, value) {
+								if (name === 'src' && typeof value === 'string') {
+									value = z_proxyCdnUrl(value);
+									srcValue = value;
+								}
+								return rawSetAttribute.call(this, name, value);
+							};
+
+							Object.defineProperty(el, 'src', {
+								get: function() {
+									return srcValue || rawGetAttribute.call(this, 'src') || '';
+								},
+								set: function(value) {
+									if (typeof value === 'string') {
+										srcValue = z_proxyCdnUrl(value);
+										rawSetAttribute.call(this, 'src', srcValue);
+									} else {
+										srcValue = value;
+									}
+								},
+								configurable: true,
+								enumerable: true
+							});
+						}
+
+						if (tagName.toLowerCase() === 'link') {
+							const rawSetAttribute = el.setAttribute;
+							const rawGetAttribute = el.getAttribute;
+							let hrefValue = '';
+							
+							el.setAttribute = function (name, value) {
+								if (name === 'href' && typeof value === 'string') {
+									value = z_proxyCdnUrl(value);
+									hrefValue = value;
+								}
+								return rawSetAttribute.call(this, name, value);
+							};
+
+							Object.defineProperty(el, 'href', {
+								get: function() {
+									return hrefValue || rawGetAttribute.call(this, 'href') || '';
+								},
+								set: function(value) {
+									if (typeof value === 'string') {
+										hrefValue = z_proxyCdnUrl(value);
+										rawSetAttribute.call(this, 'href', hrefValue);
+									} else {
+										hrefValue = value;
+									}
+								},
+								configurable: true,
+								enumerable: true
+							});
+						}
+
+						return el;
+					};
+
+					const Z_OriginalXMLHttpRequest = window.XMLHttpRequest;
+					window.XMLHttpRequest = function (...args) {
+						const xhr = new Z_OriginalXMLHttpRequest(...args);
+						const rawOpen = xhr.open;
+
+						xhr.open = function (method, url, ...rest) {
+							if (typeof url === 'string') {
+								const methodUpper = (method || '').toUpperCase();
+								if (methodUpper === 'GET' && z_isUrlInWhitelist(url)) {
+									url = z_proxyCdnUrl(url);
+								}
+							}
+							return rawOpen.call(this, method, url, ...rest);
+						};
+
+						return xhr;
+					};
+
+					window.XMLHttpRequest.prototype = Z_OriginalXMLHttpRequest.prototype;
+					Object.setPrototypeOf(window.XMLHttpRequest, Z_OriginalXMLHttpRequest);
+
+					const z_originalFetch = window.fetch;
+					window.fetch = async function (...args) {
+						if (args.length > 0) {
+							let url = '';
+							let method = 'GET';
+							
+							if (typeof args[0] === 'string') {
+								url = args[0];
+								if (args[1] && args[1].method) {
+									method = args[1].method.toUpperCase();
+								}
+								if (method === 'GET' && z_isUrlInWhitelist(url)) {
+									args[0] = z_proxyCdnUrl(url);
+								}
+							} else if (args[0] instanceof Request) {
+								const originalUrl = args[0].url;
+								method = (args[0].method || 'GET').toUpperCase();
+								if (method === 'GET' && z_isUrlInWhitelist(originalUrl)) {
+									const proxiedUrl = z_proxyCdnUrl(originalUrl);
+									if (proxiedUrl !== originalUrl) {
+										args[0] = new Request(proxiedUrl, args[0]);
+									}
+								}
+							}
+						}
+						return z_originalFetch.apply(this, args);
+					};
+				</script>
+			</head>
+			<body>
+				
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مقياس بيركس لتقدير السلوك (BBRS)</title>
+<link href="https://artifacts-cdn.chatglm.site/https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<script src="https://artifacts-cdn.chatglm.site/https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--p:#14539a;--pd:#0e3f76;--pl:#eaf2fb;--ac:#f2c811;--bg:#f2f6fb;--tx:#1e2a38;--mu:#64748b;--g:#2e9e5b;--gb:#e6f6ec;--a:#b57d05;--ab:#fdf3d7;--r:#d64545;--rb:#fde8e8}
+*{box-sizing:border-box}body{margin:0;font-family:Cairo,sans-serif;background:var(--bg);color:var(--tx);font-size:16px}
+[hidden]{display:none!important}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+.re-anim{animation:fadeUp .38s ease both}
+.re-anim>.card:nth-child(2){animation-delay:.05s}
+.re-anim>.card:nth-child(3){animation-delay:.1s}
+.re-anim>.card:nth-child(4){animation-delay:.15s}
+header{background:linear-gradient(135deg,#0e3f76,#14539a 60%,#1e6fc0);color:#fff;padding:14px 16px;border-bottom:5px solid var(--ac);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{margin:0;font-size:1.2rem}header p{margin:2px 0 0;font-size:.8rem;opacity:.85}
+.wrap{max-width:1000px;margin:0 auto;padding:14px}
+.card{background:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(16,42,77,.08);padding:18px;margin-bottom:14px;transition:transform .2s,box-shadow .2s}
+.card:hover{box-shadow:0 10px 28px rgba(16,42,77,.14);transform:translateY(-2px)}
+.card h2{margin:0 0 12px;font-size:1.1rem;color:var(--p);border-inline-start:5px solid var(--ac);padding-inline-start:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.g2{grid-template-columns:1fr}}
+.f{display:flex;flex-direction:column;gap:5px}.f label{font-weight:700;font-size:.9rem}
+input,select,textarea{padding:9px 11px;border:1.5px solid #d7e0ec;border-radius:9px;font-family:inherit;font-size:1rem;width:100%;background:#fbfdff;color:var(--tx);transition:border-color .18s,box-shadow .18s,background .18s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px rgba(20,83,154,.14);background:#fff}
+input[readonly]{background:#eef3f9;font-weight:800}.hint{font-size:.75rem;color:var(--mu)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:10px;padding:10px 20px;font-family:inherit;font-size:.98rem;font-weight:700;cursor:pointer;transition:transform .12s cubic-bezier(.34,1.56,.64,1),filter .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.93)}
+.btn:hover{filter:brightness(1.1)}
+.bp{background:var(--p);color:#fff;box-shadow:0 3px 10px rgba(20,83,154,.3)}
+.bo{background:#fff;color:var(--p);border:1.5px solid var(--p)}
+.bw{background:#25d366;color:#fff}
+.bd{background:var(--r);color:#fff}
+.bs{padding:7px 12px;font-size:.82rem}
+.acts{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;justify-content:center}
+.pill{position:relative}.pill input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.pill span{display:block;text-align:center;padding:8px 10px;border:1.5px solid #d7e0ec;border-radius:999px;background:#fbfdff;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .18s;-webkit-tap-highlight-color:transparent}
+.pill:active span{transform:scale(.93)}
+.pill input:checked+span{background:var(--p);border-color:var(--p);color:#fff;box-shadow:0 2px 8px rgba(20,83,154,.35)}
+.pg{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-weight:800}
+.pg .pct{color:var(--p)}.bar{height:9px;background:#e2e9f2;border-radius:99px;overflow:hidden}
+.bar div{height:100%;width:0%;background:linear-gradient(90deg,var(--p),#2f8fe0);transition:width .4s cubic-bezier(.25,1,.5,1)}
+.leg{display:flex;gap:5px;flex-wrap:wrap;font-size:.75rem;color:var(--mu);margin:10px 0}
+.leg span{background:var(--pl);border-radius:99px;padding:3px 9px}
+.q{padding:12px 6px;border-bottom:1px dashed #e2e9f2;border-radius:8px;transition:background .25s}
+.q:active{background:#f6f9fd}
+.q:last-child{border-bottom:none}
+.qh{display:flex;gap:10px;align-items:flex-start;margin-bottom:9px}
+.qn{min-width:36px;height:36px;border-radius:9px;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;transition:background .3s,transform .3s}
+.q.answered .qn{background:var(--g);transform:scale(1.08)}
+.qt{flex:1;font-weight:600;line-height:1.7;padding-top:4px}
+.qo{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+@media(max-width:640px){.qo{gap:4px}.pill span{font-size:.68rem;padding:8px 2px}}
+.q.bad{background:var(--rb);border-radius:10px;animation:pop .3s ease}
+.center{text-align:center}.big{font-size:3.4rem;margin-bottom:10px;animation:pop .45s ease}
+.wchild{display:inline-block;background:var(--pl);color:var(--p);border-radius:99px;padding:7px 20px;font-weight:800;margin:10px 0}
+.wmsg{color:var(--mu);line-height:2.1}.wmsg b{color:var(--p)}
+.case{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 8px;border-bottom:1px dashed #e2e9f2;flex-wrap:wrap;border-radius:9px;transition:background .2s,transform .2s;animation:fadeUp .3s ease both}
+.case:hover{background:#f2f7fd;transform:translateX(-3px)}
+.case:last-child{border-bottom:none}
+.case b{display:block}.case small{color:var(--mu)}
+.cbtns{display:flex;gap:6px;flex-shrink:0}
+.none{text-align:center;padding:28px;color:var(--mu);font-weight:700;line-height:2}
+.ov{position:fixed;inset:0;background:rgba(9,22,40,.7);display:flex;align-items:center;justify-content:center;z-index:99;padding:14px;animation:fadeUp .18s ease}
+.md{background:#fff;border-radius:16px;padding:22px;max-width:420px;width:100%;text-align:center;animation:pop .25s ease;max-height:92vh;overflow:auto}
+.md .lk{width:60px;height:60px;margin:0 auto 8px;border-radius:50%;background:var(--pl);display:flex;align-items:center;justify-content:center;font-size:1.7rem}
+.md input,.md textarea{text-align:center;letter-spacing:2px;font-weight:700;font-size:.95rem;margin-top:8px}
+.md textarea{text-align:right;min-height:130px;font-size:.72rem;font-family:monospace;letter-spacing:0}
+.md .err{color:var(--r);font-size:.8rem;margin-top:8px;font-weight:700}
+.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+@media(max-width:640px){.meta{grid-template-columns:1fr 1fr}}
+.mi{background:#f6f9fd;border:1px solid #e3ecf7;border-radius:9px;padding:7px 10px;transition:transform .18s}
+.mi:hover{transform:translateY(-2px)}
+.mi .k{font-size:.7rem;color:var(--mu)}.mi .v{font-weight:700;font-size:.92rem}
+.sc{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.su{border-radius:11px;padding:10px;text-align:center;border:2px solid;font-weight:800;transition:transform .18s}
+.su:hover{transform:translateY(-3px)}
+.su .n{font-size:1.5rem}.su .t{font-size:.8rem}
+.su.lo{border-color:var(--g);background:var(--gb);color:var(--g)}
+.su.mdx{border-color:#e0b100;background:var(--ab);color:var(--a)}
+.su.hi{border-color:var(--r);background:var(--rb);color:var(--r)}
+.sumt{background:var(--pl);border-inline-start:5px solid var(--p);border-radius:9px;padding:11px 13px;line-height:1.9;font-size:.93rem}
+table.res{width:100%;border-collapse:collapse;font-size:.9rem}
+.res th{background:var(--p);color:#fff;padding:9px 7px;font-size:.85rem}
+.res td{padding:8px 7px;border-bottom:1px solid #e6edf5;text-align:center;vertical-align:middle;transition:filter .15s}
+tr.lo td{background:var(--gb)}tr.mdx td{background:var(--ab)}tr.hi td{background:var(--rb)}
+tr:hover td{filter:brightness(.95)}
+.dn{text-align:right!important}.dn strong{display:block}.dn small{display:block;color:var(--mu);font-weight:400}
+.score{font-weight:800}
+.bg{display:inline-block;padding:4px 13px;border-radius:99px;color:#fff;font-weight:700;font-size:.8rem}
+.bg.lo{background:var(--g)}.bg.mdx{background:#e0a800;color:#4d3800}.bg.hi{background:var(--r)}
+.hb{border:1.5px solid #f0c7c7;border-radius:11px;margin-bottom:13px;overflow:hidden;animation:fadeUp .3s ease both}
+.hh{background:var(--rb);color:var(--r);padding:9px 13px;font-weight:800}
+table.htb{width:100%;border-collapse:collapse;font-size:.86rem}
+.htb th{background:#fbe3e3;color:#8f2f2f;padding:7px;font-size:.78rem}
+.htb td{padding:7px 9px;border-top:1px solid #f6dcdc;text-align:center;background:#fff}
+.htb td.qd{text-align:right;line-height:1.7;font-weight:600}
+.rc{display:inline-block;padding:3px 11px;border-radius:99px;font-weight:700;font-size:.78rem}
+.r1{background:var(--gb);color:var(--g)}.r2{background:#e5f2f8;color:#1d7fa3}.r3{background:var(--ab);color:var(--a)}.r4{background:#ffe8d2;color:#b05e00}.r5{background:var(--rb);color:var(--r)}
+.lg2{display:flex;gap:9px;flex-wrap:wrap;margin:11px 0;font-size:.8rem;font-weight:700}
+.sw{width:14px;height:14px;border-radius:4px;display:inline-block;vertical-align:middle;margin-inline-end:4px}
+.cb{position:relative;height:720px}
+.sig{display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between;border-top:2px dashed #d7e0ec;padding-top:12px;margin-top:13px;font-size:.88rem}
+#toast{position:fixed;bottom:20px;right:50%;transform:translateX(50%) translateY(20px);background:#17324f;color:#fff;padding:11px 20px;border-radius:11px;z-index:999;opacity:0;pointer-events:none;transition:.35s cubic-bezier(.25,1,.5,1);font-weight:600;max-width:92vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(50%) translateY(0)}
+footer{text-align:center;color:var(--mu);font-size:.78rem;padding:14px}
+@media print{
+  @page{size:A4;margin:11mm}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  header,.no-print,footer,#toast{display:none!important}
+  #sec-login,#sec-qs,#sec-wait,#sec-cases{display:none!important}
+  #sec-rep{display:block!important}#hidCard{display:none!important}
+  .card{box-shadow:none;border:1px solid #d7e0ec;break-inside:avoid}
+  tr,.hb{break-inside:avoid}.cb{height:620px}
+}
+</style>
+
+
+
+<header class="no-print">
+  <div>
+    <h1>🧩 مقياس بيركس لتقدير السلوك (BBRS)</h1>
+    <p>التطبيق والتصحيح الآلي وإصدار التقرير النفسي</p>
+  </div>
+  <button class="bo btn bs" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.55)" id="bAdmin">🔒 لوحة الأدمن</button>
+</header>
+
+<div class="wrap">
+
+<!-- 1) بيانات الطفل -->
+<section id="sec-login" class="re-anim">
+  <div class="card">
+    <h2>📋 بيانات الطفل</h2>
+    <div class="g2">
+      <div class="f"><label>اسم الطفل</label><input id="f_name" placeholder="الاسم الرباعي"></div>
+      <div class="f"><label>الجنس</label>
+        <div style="display:flex;gap:8px">
+          <label class="pill" style="flex:1"><input type="radio" name="g" value="ذكر"><span>👦 ذكر</span></label>
+          <label class="pill" style="flex:1"><input type="radio" name="g" value="أنثى"><span>👧 أنثى</span></label>
+        </div>
+      </div>
+      <div class="f"><label>تاريخ الميلاد</label><input type="date" id="f_birth"><small class="hint">العمر يُحسب تلقائياً بالسنة والشهر واليوم</small></div>
+      <div class="f"><label>عمر الطفل</label><input id="f_age" placeholder="يُحسب تلقائياً أو اكتبه"></div>
+      <div class="f"><label>تاريخ التطبيق</label><input type="date" id="f_date"></div>
+      <div class="f"><label>رقم الهاتف</label><input type="tel" id="f_phone" inputmode="tel"></div>
+      <div class="f"><label>مصدر المعلومات</label>
+        <select id="f_src"><option value="">— اختر —</option><option>أب</option><option>أم</option><option>معلم</option><option>شخص آخر</option></select>
+      </div>
+      <div class="f" id="fOthW" hidden=""><label>إذا كان شخص آخر، التحديد</label><input id="f_oth"></div>
+      <div class="f"><label>نوع المشكلة</label><input id="f_prob" placeholder="اكتب نوع المشكلة"></div>
+    </div>
+    <div class="acts" style="justify-content:flex-start">
+      <button class="btn bp" id="bStart">🚀 بدء التقييم</button>
+    </div>
+  </div>
+</section>
+
+<!-- 2) الأسئلة -->
+<section id="sec-qs" hidden="">
+  <div class="card">
+    <div class="pg"><h2 style="margin:0">📝 فقرات التقييم</h2><span class="pct" id="pTxt">0 / 110</span></div>
+    <div class="bar"><div id="pBar"></div></div>
+    <div class="leg"><b>سلم التقدير:</b><span>1 = إطلاقاً</span><span>2 = نادراً</span><span>3 = قليلاً</span><span>4 = كثيراً</span><span>5 = كثيراً جداً</span></div>
+    <div id="qs"><div class="q" data-q="1"><div class="qh"><div class="qn">1</div><div class="qt">يبدو مشتتاً وغير مستقر فسريعاً ما ينتقل من موضوع إلى آخر</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q1" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q1" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q1" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q1" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q1" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="2"><div class="qh"><div class="qn">2</div><div class="qt">يسأل أسئلة تظهر قلقاً على المستقبل</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q2" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q2" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q2" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q2" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q2" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="3"><div class="qh"><div class="qn">3</div><div class="qt">دائم الشكوى من أن الأطفال الآخرين يضايقونه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q3" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q3" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q3" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q3" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q3" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="4"><div class="qh"><div class="qn">4</div><div class="qt">لا يسأل أسئلة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q4" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q4" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q4" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q4" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q4" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="5"><div class="qh"><div class="qn">5</div><div class="qt">ينزعج جداً إذا أخطأ</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q5" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q5" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q5" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q5" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q5" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="6"><div class="qh"><div class="qn">6</div><div class="qt">لا يستطيع أن يتنوع في استجاباته</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q6" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q6" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q6" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q6" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q6" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="7"><div class="qh"><div class="qn">7</div><div class="qt">غير مثابر وسريعاً ما يتشتت انتباهه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q7" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q7" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q7" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q7" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q7" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="8"><div class="qh"><div class="qn">8</div><div class="qt">يدعي بأنه مظلوم وحقوقه مهضومة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q8" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q8" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q8" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q8" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q8" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="9"><div class="qh"><div class="qn">9</div><div class="qt">يقوم باستجابات (ردود فعل) غير ملائمة للموقف</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q9" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q9" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q9" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q9" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q9" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="10"><div class="qh"><div class="qn">10</div><div class="qt">يبالغ في تأنيب الضمير إذا أخطأ</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q10" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q10" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q10" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q10" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q10" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="11"><div class="qh"><div class="qn">11</div><div class="qt">فترة انتباهه لا تتحسن سواء عُوقب أم أُثيب</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q11" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q11" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q11" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q11" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q11" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="12"><div class="qh"><div class="qn">12</div><div class="qt">لا يبدي خيالاً (ضيق الأفق)</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q12" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q12" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q12" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q12" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q12" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="13"><div class="qh"><div class="qn">13</div><div class="qt">لا يغفر للآخرين إذا أساؤوا إليه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q13" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q13" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q13" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q13" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q13" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="14"><div class="qh"><div class="qn">14</div><div class="qt">ينزعج إذا لم يكن كل شيء في غاية الكمال</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q14" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q14" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q14" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q14" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q14" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="15"><div class="qh"><div class="qn">15</div><div class="qt">فترة انتباهه قصيرة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q15" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q15" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q15" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q15" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q15" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="16"><div class="qh"><div class="qn">16</div><div class="qt">يجد صعوبة في تذكر الأشياء أو الأحداث</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q16" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q16" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q16" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q16" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q16" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="17"><div class="qh"><div class="qn">17</div><div class="qt">يتهم الآخرين بأشياء لم يفعلوها معه حقيقة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q17" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q17" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q17" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q17" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q17" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="18"><div class="qh"><div class="qn">18</div><div class="qt">يبدو الضعف واضحاً في مفرداته اللغوية</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q18" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q18" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q18" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q18" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q18" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="19"><div class="qh"><div class="qn">19</div><div class="qt">يشكو من أن الآخرين لا يحبونه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q19" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q19" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q19" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q19" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q19" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="20"><div class="qh"><div class="qn">20</div><div class="qt">لا يتم عملاً إذا استمر في التنقل من عمل إلى آخر</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q20" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q20" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q20" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q20" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q20" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="21"><div class="qh"><div class="qn">21</div><div class="qt">يلوم نفسه إذا لم تسر الأمور كما يحب</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q21" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q21" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q21" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q21" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q21" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="22"><div class="qh"><div class="qn">22</div><div class="qt">غير منطقي في حكمه على الأشياء</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q22" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q22" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q22" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q22" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q22" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="23"><div class="qh"><div class="qn">23</div><div class="qt">يظهر مخاوف كثيرة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q23" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q23" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q23" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q23" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q23" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="24"><div class="qh"><div class="qn">24</div><div class="qt">يحيك قصصاً غريبة ولا معنى لها</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q24" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q24" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q24" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q24" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q24" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="25"><div class="qh"><div class="qn">25</div><div class="qt">يظهر ضعفاً في القراءة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q25" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q25" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q25" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q25" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q25" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="26"><div class="qh"><div class="qn">26</div><div class="qt">يتهيج بسرعة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q26" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q26" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q26" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q26" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q26" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="27"><div class="qh"><div class="qn">27</div><div class="qt">لغته غير مفهومة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q27" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q27" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q27" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q27" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q27" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="28"><div class="qh"><div class="qn">28</div><div class="qt">لا يهتم بردود فعل الآخرين ويفعل ما يحلو له</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q28" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q28" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q28" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q28" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q28" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="29"><div class="qh"><div class="qn">29</div><div class="qt">يقع في أخطاء إملائية عندما يكتب</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q29" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q29" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q29" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q29" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q29" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="30"><div class="qh"><div class="qn">30</div><div class="qt">يكذب</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q30" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q30" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q30" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q30" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q30" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="31"><div class="qh"><div class="qn">31</div><div class="qt">حركته زائدة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q31" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q31" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q31" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q31" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q31" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="32"><div class="qh"><div class="qn">32</div><div class="qt">يبدو شارد الذهن مستغرقاً في أحلام اليقظة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q32" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q32" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q32" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q32" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q32" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="33"><div class="qh"><div class="qn">33</div><div class="qt">يبدو متوتراً ومتضايقاً</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q33" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q33" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q33" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q33" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q33" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="34"><div class="qh"><div class="qn">34</div><div class="qt">لا يفي بوعوده</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q34" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q34" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q34" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q34" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q34" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="35"><div class="qh"><div class="qn">35</div><div class="qt">يثور بسرعة ويقوم بأعمال غير متوقعة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q35" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q35" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q35" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q35" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q35" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="36"><div class="qh"><div class="qn">36</div><div class="qt">يظهر على وجهه حركات لا إرادية ودون سبب ظاهر</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q36" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q36" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q36" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q36" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q36" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="37"><div class="qh"><div class="qn">37</div><div class="qt">يعتريه القلق كثيراً</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q37" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q37" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q37" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q37" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q37" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="38"><div class="qh"><div class="qn">38</div><div class="qt">يستولي على ممتلكات غيره</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q38" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q38" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q38" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q38" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q38" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="39"><div class="qh"><div class="qn">39</div><div class="qt">يبدو ضعيفاً في إتباع التعليمات الأكاديمية</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q39" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q39" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q39" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q39" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q39" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="40"><div class="qh"><div class="qn">40</div><div class="qt">يضحك في سره ويكلم نفسه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q40" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q40" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q40" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q40" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q40" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="41"><div class="qh"><div class="qn">41</div><div class="qt">قليل الاحترام للسلطة وللمسؤولين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q41" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q41" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q41" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q41" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q41" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="42"><div class="qh"><div class="qn">42</div><div class="qt">يحمر (يتورد) وجهه بسهولة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q42" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q42" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q42" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q42" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q42" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="43"><div class="qh"><div class="qn">43</div><div class="qt">يداوم على هز جسمه باتجاه معين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q43" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q43" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q43" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q43" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q43" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="44"><div class="qh"><div class="qn">44</div><div class="qt">يكتب مهامه المدرسية بشكل غير منتظم</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q44" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q44" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q44" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q44" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q44" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="45"><div class="qh"><div class="qn">45</div><div class="qt">يتأخر عن الدوام المدرسي</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q45" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q45" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q45" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q45" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q45" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="46"><div class="qh"><div class="qn">46</div><div class="qt">متهور ولا يضبط نفسه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q46" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q46" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q46" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q46" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q46" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="47"><div class="qh"><div class="qn">47</div><div class="qt">رسوماته لا تتفق مع الواقع</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q47" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q47" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q47" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q47" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q47" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="48"><div class="qh"><div class="qn">48</div><div class="qt">يقوم بأعمال طائشة وغير مقبولة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q48" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q48" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q48" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q48" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q48" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="49"><div class="qh"><div class="qn">49</div><div class="qt">يبدو عصبياً</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q49" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q49" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q49" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q49" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q49" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="50"><div class="qh"><div class="qn">50</div><div class="qt">لا يعي ما يدور حوله</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q50" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q50" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q50" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q50" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q50" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="51"><div class="qh"><div class="qn">51</div><div class="qt">لا يقوم بأداء واجباته المدرسية أو يؤديها غير مكتملة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q51" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q51" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q51" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q51" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q51" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="52"><div class="qh"><div class="qn">52</div><div class="qt">عندما ينفعل لا يضبط نفسه (كأن يصرخ أو يقفز من كرسيه)</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q52" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q52" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q52" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q52" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q52" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="53"><div class="qh"><div class="qn">53</div><div class="qt">يتغيب عن المدرسة دون عذر مقبول</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q53" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q53" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q53" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q53" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q53" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="54"><div class="qh"><div class="qn">54</div><div class="qt">يتحاشى الاحتكاك الجسمي أثناء اللعب ويتجنب الألعاب الخشنة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q54" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q54" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q54" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q54" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q54" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="55"><div class="qh"><div class="qn">55</div><div class="qt">سريع الغضب</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q55" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q55" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q55" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q55" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q55" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="56"><div class="qh"><div class="qn">56</div><div class="qt">يتعمد أن يكون معارضاً</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q56" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q56" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q56" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q56" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q56" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="57"><div class="qh"><div class="qn">57</div><div class="qt">عنيد وغير متعاون</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q57" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q57" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q57" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q57" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q57" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="58"><div class="qh"><div class="qn">58</div><div class="qt">يواجه صعوبة في حمل الأشياء</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q58" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q58" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q58" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q58" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q58" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="59"><div class="qh"><div class="qn">59</div><div class="qt">يتعرض للإصابة (يؤذي نفسه) أثناء اللعب</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q59" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q59" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q59" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q59" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q59" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="60"><div class="qh"><div class="qn">60</div><div class="qt">يرفض إتباع التعليمات والقواعد ويتمرد عند محاولة ضبطه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q60" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q60" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q60" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q60" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q60" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="61"><div class="qh"><div class="qn">61</div><div class="qt">يغضب إذا طُلب منه القيام بعمل ما</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q61" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q61" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q61" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q61" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q61" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="62"><div class="qh"><div class="qn">62</div><div class="qt">يظهر عدم تناسق في أداء النشاطات والحركات العضلية الكبيرة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q62" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q62" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q62" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q62" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q62" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="63"><div class="qh"><div class="qn">63</div><div class="qt">يميل إلى ألعاب الجنس الآخر</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q63" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q63" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q63" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q63" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q63" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="64"><div class="qh"><div class="qn">64</div><div class="qt">يتعب بسرعة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q64" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q64" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q64" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q64" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q64" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="65"><div class="qh"><div class="qn">65</div><div class="qt">خطه ضعيف وغير متناسق</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q65" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q65" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q65" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q65" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q65" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="66"><div class="qh"><div class="qn">66</div><div class="qt">ينكر مسؤوليته عن أفعال قام بها</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q66" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q66" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q66" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q66" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q66" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="67"><div class="qh"><div class="qn">67</div><div class="qt">يحبط ويفقد القدرة على ضبط انفعالاته بسرعة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q67" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q67" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q67" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q67" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q67" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="68"><div class="qh"><div class="qn">68</div><div class="qt">يفضل أن يكون وحيداً</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q68" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q68" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q68" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q68" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q68" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="69"><div class="qh"><div class="qn">69</div><div class="qt">رسوماته غير متناسقة وتلوينه للأشكال غير متقن</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q69" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q69" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q69" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q69" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q69" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="70"><div class="qh"><div class="qn">70</div><div class="qt">لا يقبل توجيهات الآخرين ويصر على استخدام أسلوبه عند القيام بعمل ما</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q70" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q70" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q70" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q70" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q70" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="71"><div class="qh"><div class="qn">71</div><div class="qt">لا يشارك الآخرين في الألعاب الخشنة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q71" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q71" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q71" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q71" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q71" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="72"><div class="qh"><div class="qn">72</div><div class="qt">متعثر مشيه إذ يصطدم بالآخرين أو بالأشياء من حوله</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q72" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q72" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q72" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q72" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q72" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="73"><div class="qh"><div class="qn">73</div><div class="qt">ينفجر غضباً تحت تأثير الضغوطات</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q73" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q73" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q73" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q73" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q73" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="74"><div class="qh"><div class="qn">74</div><div class="qt">لا يتقبل زملاءه ويعبر عن ذلك بطريقة عدائية</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q74" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q74" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q74" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q74" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q74" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="75"><div class="qh"><div class="qn">75</div><div class="qt">يبدو خاملاً وثقيل الحركة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q75" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q75" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q75" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q75" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q75" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="76"><div class="qh"><div class="qn">76</div><div class="qt">لا يتقبل اقتراحات الآخرين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q76" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q76" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q76" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q76" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q76" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="77"><div class="qh"><div class="qn">77</div><div class="qt">ينفجر غضباً على زملائه إذا ضايقوه في مزاحهم أو دفعوه بأيديهم</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q77" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q77" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q77" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q77" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q77" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="78"><div class="qh"><div class="qn">78</div><div class="qt">يتعمد أن يكون سلوكه مختلفاً عن الآخرين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q78" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q78" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q78" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q78" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q78" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="79"><div class="qh"><div class="qn">79</div><div class="qt">عبوس الوجه مقطب الجبين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q79" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q79" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q79" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q79" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q79" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="80"><div class="qh"><div class="qn">80</div><div class="qt">يصعب فهمه أو التودد إليه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q80" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q80" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q80" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q80" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q80" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="81"><div class="qh"><div class="qn">81</div><div class="qt">لا يثق بقدراته ويقلل من شأنه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q81" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q81" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q81" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q81" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q81" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="82"><div class="qh"><div class="qn">82</div><div class="qt">يسر عندما يرى غيره في مأزق</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q82" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q82" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q82" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q82" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q82" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="83"><div class="qh"><div class="qn">83</div><div class="qt">يعتمد على الآخرين وينقاد لهم</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q83" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q83" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q83" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q83" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q83" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="84"><div class="qh"><div class="qn">84</div><div class="qt">يضرب ويدفع الآخرين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q84" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q84" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q84" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q84" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q84" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="85"><div class="qh"><div class="qn">85</div><div class="qt">يبدو غير سعيد</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q85" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q85" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q85" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q85" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q85" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="86"><div class="qh"><div class="qn">86</div><div class="qt">لا يتعاطف مع الآخرين في حزنهم</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q86" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q86" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q86" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q86" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q86" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="87"><div class="qh"><div class="qn">87</div><div class="qt">خنوع، مبالغ في الطاعة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q87" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q87" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q87" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q87" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q87" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="88"><div class="qh"><div class="qn">88</div><div class="qt">يشعر بالرضا تجاه أداءه الضعيف</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q88" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q88" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q88" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q88" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q88" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="89"><div class="qh"><div class="qn">89</div><div class="qt">يرغب في عقاب الآخرين له</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q89" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q89" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q89" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q89" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q89" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="90"><div class="qh"><div class="qn">90</div><div class="qt">ينسحب بسرعة من النشاطات الجماعية بحيث يفضل أن يعمل مفردة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q90" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q90" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q90" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q90" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q90" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="91"><div class="qh"><div class="qn">91</div><div class="qt">يتجنب المواقف التي تتضمن منافسة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q91" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q91" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q91" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q91" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q91" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="92"><div class="qh"><div class="qn">92</div><div class="qt">لا يرضى إلا أن يقوم بدور القائد للآخرين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q92" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q92" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q92" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q92" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q92" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="93"><div class="qh"><div class="qn">93</div><div class="qt">يقاد ويذعن لغيره بسهولة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q93" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q93" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q93" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q93" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q93" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="94"><div class="qh"><div class="qn">94</div><div class="qt">خجول</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q94" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q94" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q94" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q94" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q94" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="95"><div class="qh"><div class="qn">95</div><div class="qt">يتعمد وضع نفسه في مواقف تستدعي الانتقاد</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q95" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q95" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q95" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q95" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q95" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="96"><div class="qh"><div class="qn">96</div><div class="qt">يسخر من الآخرين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q96" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q96" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q96" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q96" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q96" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="97"><div class="qh"><div class="qn">97</div><div class="qt">إذا فشل فمن السهل أن يحبط ولا يحاول مرة أخرى</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q97" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q97" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q97" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q97" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q97" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="98"><div class="qh"><div class="qn">98</div><div class="qt">يصعب التعرف على مشاعره لكونه لا يظهر مشاعر نحو الآخرين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q98" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q98" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q98" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q98" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q98" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="99"><div class="qh"><div class="qn">99</div><div class="qt">يظهر نفسه مطغوياً على أمره (ينكمش)</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q99" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q99" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q99" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q99" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q99" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="100"><div class="qh"><div class="qn">100</div><div class="qt">يغيض ويضايق الآخرين</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q100" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q100" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q100" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q100" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q100" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="101"><div class="qh"><div class="qn">101</div><div class="qt">يتصرف بسخافة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q101" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q101" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q101" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q101" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q101" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="102"><div class="qh"><div class="qn">102</div><div class="qt">يتكل على غيره في أداء الأعمال التي يفترض أن يقوم هو بها</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q102" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q102" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q102" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q102" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q102" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="103"><div class="qh"><div class="qn">103</div><div class="qt">شديد الحساسية، تُؤذى مشاعره بسهولة</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q103" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q103" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q103" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q103" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q103" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="104"><div class="qh"><div class="qn">104</div><div class="qt">يبدو قليل الثقة بنفسه</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q104" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q104" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q104" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q104" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q104" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="105"><div class="qh"><div class="qn">105</div><div class="qt">شديد التعلق بالكبار (الراشدين) إذ من الصعب أن يفارقهم</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q105" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q105" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q105" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q105" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q105" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="106"><div class="qh"><div class="qn">106</div><div class="qt">يخدع الأطفال الآخرين ويحتال عليهم</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q106" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q106" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q106" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q106" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q106" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="107"><div class="qh"><div class="qn">107</div><div class="qt">لا يظهر اهتماماً بأعمال غيره من الأطفال</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q107" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q107" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q107" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q107" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q107" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="108"><div class="qh"><div class="qn">108</div><div class="qt">يبدو مكتئباً</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q108" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q108" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q108" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q108" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q108" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="109"><div class="qh"><div class="qn">109</div><div class="qt">يبحث عن التشجيع والمديح باستمرار</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q109" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q109" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q109" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q109" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q109" value="5"><span>كثيراً جداً</span></label></div></div><div class="q" data-q="110"><div class="qh"><div class="qn">110</div><div class="qt">يحاول جذب انتباه زملائه عن طريق التهريج</div></div>
+  <div class="qo"><label class="pill"><input type="radio" name="q110" value="1"><span>إطلاقاً</span></label><label class="pill"><input type="radio" name="q110" value="2"><span>نادراً</span></label><label class="pill"><input type="radio" name="q110" value="3"><span>قليلاً</span></label><label class="pill"><input type="radio" name="q110" value="4"><span>كثيراً</span></label><label class="pill"><input type="radio" name="q110" value="5"><span>كثيراً جداً</span></label></div></div></div>
+    <div class="acts no-print"><button class="btn bp" id="bDone">تم ✅</button></div>
+  </div>
+</section>
+
+<!-- 3) الانتظار + الإرسال -->
+<section id="sec-wait" hidden="">
+  <div class="card center">
+    <div class="big">✅</div>
+    <h2 style="border:none;justify-content:center;color:var(--g)">تم إرسال الإجابات بنجاح</h2>
+    <div class="wchild">👶 <span id="wName">—</span></div>
+    <p class="wmsg"><b>انتظر النتيجة في أقرب وقت</b></p>
+    <div class="acts no-print" style="border-top:2px dashed #d7e0ec;padding-top:16px">
+      <button class="btn bw" id="bWa">📤 إرسال عبر واتساب</button>
+      <button class="btn bo" id="bCopy">📋 نسخ كود الإرسال</button>
+    </div>
+  </div>
+</section>
+
+<!-- لوحة الأدمن -->
+<section id="sec-cases" hidden="">
+  <div class="card no-print">
+    <h2>📥 استيراد تقييم مُرسل</h2>
+    <p class="hint" style="margin:0 0 8px">الصق رسالة واتساب كاملة ثم اضغط استيراد — سيفتح التقرير فوراً:</p>
+    <textarea id="impBox" rows="4" placeholder="الصق الرسالة هنا"></textarea>
+    <div class="acts" style="justify-content:flex-start"><button class="btn bp" id="bImp">📥 استيراد</button></div>
+  </div>
+  <div class="card">
+    <h2>📂 الحالات المستلمة</h2>
+    <div id="cases"></div>
+  </div>
+  <div class="card no-print">
+    <h2>💾 النسخة الاحتياطية (نسخ ولصق)</h2>
+    <p class="hint" style="margin:0 0 10px;line-height:1.9"><b>للحفظ:</b> إظهار النسخة ← نسخ ← الصقها في واتساب لنفسك. <b>للاستعادة:</b> انسخ النص ← استعادة ← الصقه.</p>
+    <div class="acts" style="justify-content:flex-start;margin-top:0">
+      <button class="btn bp" id="bBkShow">💾 إظهار نسخة احتياطية</button>
+      <button class="btn bo" id="bBkRestore">📂 استعادة من نص</button>
+    </div>
+  </div>
+  <!-- ★ زرار الرجوع في لوحة الأدمن -->
+  <div class="acts no-print">
+    <button class="btn bo" id="bAdminBack">🔙 رجوع</button>
+  </div>
+</section>
+
+<!-- التقرير -->
+<section id="sec-rep" hidden="">
+  <div class="card center no-print" id="hidCard" hidden="">
+    <div class="big">🙈</div>
+    <h2 style="border:none;justify-content:center">التقرير مخفي حالياً</h2>
+    <div class="wchild">👶 <span id="hidName">—</span></div>
+    <div class="acts">
+      <button class="btn bp" id="bShow">👁 إظهار التقرير</button>
+      <button class="btn bd" id="bDel2">🗑 حذف الحالة</button>
+    </div>
+  </div>
+
+  <div id="rep">
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:flex-start;border-bottom:4px solid var(--ac);padding-bottom:12px;margin-bottom:14px;flex-wrap:wrap">
+        <div style="width:54px;height:54px;border-radius:12px;background:linear-gradient(135deg,var(--p),#1e6fc0);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">BBRS</div>
+        <div><h2 style="border:none;padding:0;margin:0">التقرير النفسي الشامل — مقياس بيركس لتقدير السلوك</h2>
+        <div class="hint">Burks Behavior Rating Scale (القريويت وجرار، 1987)</div></div>
+      </div>
+      <div class="meta" id="rMeta"></div>
+      <div class="sc" id="rSum"></div>
+      <div class="sumt" id="rTxt"></div>
+    </div>
+
+    <div class="card">
+      <h2>📊 جدول النتائج — الأبعاد التسعة عشر</h2>
+      <div style="overflow-x:auto">
+        <table class="res">
+          <thead><tr><th style="width:40px">م</th><th>البُعد</th><th style="width:120px">الدرجة</th><th style="width:130px">التفسير</th></tr></thead>
+          <tbody id="rBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="hiCard" hidden="">
+      <h2>🚨 تفصيل فقرات الأبعاد ذات الدلالة العالية</h2>
+      <div id="hiList"></div>
+    </div>
+
+    <div class="card">
+      <h2>📈 الصفحة النفسية للطالب</h2>
+      <div class="cb"><canvas id="ch"></canvas></div>
+      <div class="lg2">
+        <span><span class="sw" style="background:var(--g)"></span>غير دالة</span>
+        <span><span class="sw" style="background:#e0a800"></span>دالة</span>
+        <span><span class="sw" style="background:var(--r)"></span>ذات دلالة عالية</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>💡 أهم التوصيات</h2>
+      <textarea id="recT" rows="4" placeholder="اكتب التوصيات هنا..."></textarea>
+      <div class="sig"><div>تاريخ التقرير: <b id="rDate"></b></div><div>توقيع الفاحص: ....................</div></div>
+    </div>
+  </div>
+
+  <div class="card no-print">
+    <div class="acts">
+      <button class="btn bp" id="bExp">🖨 حفظ التقرير PDF</button>
+      <button class="btn bo" id="bHide">🙈 إخفاء التقرير</button>
+      <button class="btn bo" id="bBack">🔙 رجوع</button>
+      <button class="btn bd" id="bDel1">🗑 حذف الحالة</button>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer class="no-print">مقياس بيركس لتقدير السلوك (BBRS)</footer>
+
+<!-- نافذة كلمة المرور -->
+<div class="ov no-print" id="mPass" hidden="">
+  <div class="md">
+    <div class="lk">🔒</div>
+    <h3 style="margin:0 0 4px;color:var(--p)">لوحة الأدمن</h3>
+    <p class="hint" style="margin:0">مخصصة للأخصائي فقط — أدخل كلمة المرور</p>
+    <input type="password" id="pass" placeholder="••••">
+    <div class="err" id="pErr" hidden="">❌ كلمة المرور غير صحيحة</div>
+    <div class="acts"><button class="btn bo" id="pCancel">إلغاء</button><button class="btn bp" id="pGo">دخول 🔓</button></div>
+  </div>
+</div>
+
+<!-- نافذة تأكيد الحذف -->
+<div class="ov no-print" id="delOv" hidden="">
+  <div class="md">
+    <div class="lk" style="background:var(--rb)">🗑</div>
+    <h3 style="margin:0 0 4px;color:var(--r)">حذف الحالة نهائياً؟</h3>
+    <p class="hint" style="margin:0 0 6px;line-height:2" id="delMsg">سيتم مسح جميع بيانات الطفل والإجابات والتقرير ولا يمكن استرجاعها.</p>
+    <div class="acts"><button class="btn bo" id="delNo">إلغاء</button><button class="btn bd" id="delYes">نعم، احذف</button></div>
+  </div>
+</div>
+
+<!-- نافذة النسخة الاحتياطية -->
+<div class="ov no-print" id="bkOv" hidden="">
+  <div class="md">
+    <h3 id="bkTitle" style="margin:0 0 6px;color:var(--p)">💾 النسخة الاحتياطية</h3>
+    <p class="hint" id="bkHint" style="margin:0 0 8px;line-height:1.9"></p>
+    <textarea id="bkText" placeholder="الصق نص النسخة الاحتياطية هنا..."></textarea>
+    <div class="acts">
+      <button class="btn bp" id="bkCopy" hidden="">📋 نسخ كل النص</button>
+      <button class="btn bp" id="bkDo" hidden="">📂 استعادة</button>
+      <button class="btn bo" id="bkClose">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* رقم واتساب الأخصائي (بالصيغة الدولية بدون +) مثال: "201012345678" */
+const ADMIN_PHONE = "";
+
+const KEY="bbrs_s4", ARC="bbrs_a4", PASS="2026";
+const LK=["إطلاقاً","نادراً","قليلاً","كثيراً","كثيراً جداً"];
+const $=i=>document.getElementById(i);
+
+const Q=[
+"يبدو مشتتاً وغير مستقر فسريعاً ما ينتقل من موضوع إلى آخر","يسأل أسئلة تظهر قلقاً على المستقبل","دائم الشكوى من أن الأطفال الآخرين يضايقونه","لا يسأل أسئلة","ينزعج جداً إذا أخطأ","لا يستطيع أن يتنوع في استجاباته","غير مثابر وسريعاً ما يتشتت انتباهه","يدعي بأنه مظلوم وحقوقه مهضومة","يقوم باستجابات (ردود فعل) غير ملائمة للموقف","يبالغ في تأنيب الضمير إذا أخطأ","فترة انتباهه لا تتحسن سواء عُوقب أم أُثيب","لا يبدي خيالاً (ضيق الأفق)","لا يغفر للآخرين إذا أساؤوا إليه","ينزعج إذا لم يكن كل شيء في غاية الكمال","فترة انتباهه قصيرة","يجد صعوبة في تذكر الأشياء أو الأحداث","يتهم الآخرين بأشياء لم يفعلوها معه حقيقة","يبدو الضعف واضحاً في مفرداته اللغوية","يشكو من أن الآخرين لا يحبونه","لا يتم عملاً إذا استمر في التنقل من عمل إلى آخر","يلوم نفسه إذا لم تسر الأمور كما يحب","غير منطقي في حكمه على الأشياء","يظهر مخاوف كثيرة","يحيك قصصاً غريبة ولا معنى لها","يظهر ضعفاً في القراءة","يتهيج بسرعة","لغته غير مفهومة","لا يهتم بردود فعل الآخرين ويفعل ما يحلو له","يقع في أخطاء إملائية عندما يكتب","يكذب","حركته زائدة","يبدو شارد الذهن مستغرقاً في أحلام اليقظة","يبدو متوتراً ومتضايقاً","لا يفي بوعوده","يثور بسرعة ويقوم بأعمال غير متوقعة","يظهر على وجهه حركات لا إرادية ودون سبب ظاهر","يعتريه القلق كثيراً","يستولي على ممتلكات غيره","يبدو ضعيفاً في إتباع التعليمات الأكاديمية","يضحك في سره ويكلم نفسه","قليل الاحترام للسلطة وللمسؤولين","يحمر (يتورد) وجهه بسهولة","يداوم على هز جسمه باتجاه معين","يكتب مهامه المدرسية بشكل غير منتظم","يتأخر عن الدوام المدرسي","متهور ولا يضبط نفسه","رسوماته لا تتفق مع الواقع","يقوم بأعمال طائشة وغير مقبولة","يبدو عصبياً","لا يعي ما يدور حوله","لا يقوم بأداء واجباته المدرسية أو يؤديها غير مكتملة","عندما ينفعل لا يضبط نفسه (كأن يصرخ أو يقفز من كرسيه)","يتغيب عن المدرسة دون عذر مقبول","يتحاشى الاحتكاك الجسمي أثناء اللعب ويتجنب الألعاب الخشنة","سريع الغضب","يتعمد أن يكون معارضاً","عنيد وغير متعاون","يواجه صعوبة في حمل الأشياء","يتعرض للإصابة (يؤذي نفسه) أثناء اللعب","يرفض إتباع التعليمات والقواعد ويتمرد عند محاولة ضبطه","يغضب إذا طُلب منه القيام بعمل ما","يظهر عدم تناسق في أداء النشاطات والحركات العضلية الكبيرة","يميل إلى ألعاب الجنس الآخر","يتعب بسرعة","خطه ضعيف وغير متناسق","ينكر مسؤوليته عن أفعال قام بها","يحبط ويفقد القدرة على ضبط انفعالاته بسرعة","يفضل أن يكون وحيداً","رسوماته غير متناسقة وتلوينه للأشكال غير متقن","لا يقبل توجيهات الآخرين ويصر على استخدام أسلوبه عند القيام بعمل ما","لا يشارك الآخرين في الألعاب الخشنة","متعثر مشيه إذ يصطدم بالآخرين أو بالأشياء من حوله","ينفجر غضباً تحت تأثير الضغوطات","لا يتقبل زملاءه ويعبر عن ذلك بطريقة عدائية","يبدو خاملاً وثقيل الحركة","لا يتقبل اقتراحات الآخرين","ينفجر غضباً على زملائه إذا ضايقوه في مزاحهم أو دفعوه بأيديهم","يتعمد أن يكون سلوكه مختلفاً عن الآخرين","عبوس الوجه مقطب الجبين","يصعب فهمه أو التودد إليه","لا يثق بقدراته ويقلل من شأنه","يسر عندما يرى غيره في مأزق","يعتمد على الآخرين وينقاد لهم","يضرب ويدفع الآخرين","يبدو غير سعيد","لا يتعاطف مع الآخرين في حزنهم","خنوع، مبالغ في الطاعة","يشعر بالرضا تجاه أداءه الضعيف","يرغب في عقاب الآخرين له","ينسحب بسرعة من النشاطات الجماعية بحيث يفضل أن يعمل مفردة","يتجنب المواقف التي تتضمن منافسة","لا يرضى إلا أن يقوم بدور القائد للآخرين","يقاد ويذعن لغيره بسهولة","خجول","يتعمد وضع نفسه في مواقف تستدعي الانتقاد","يسخر من الآخرين","إذا فشل فمن السهل أن يحبط ولا يحاول مرة أخرى","يصعب التعرف على مشاعره لكونه لا يظهر مشاعر نحو الآخرين","يظهر نفسه مطغوياً على أمره (ينكمش)","يغيض ويضايق الآخرين","يتصرف بسخافة","يتكل على غيره في أداء الأعمال التي يفترض أن يقوم هو بها","شديد الحساسية، تُؤذى مشاعره بسهولة","يبدو قليل الثقة بنفسه","شديد التعلق بالكبار (الراشدين) إذ من الصعب أن يفارقهم","يخدع الأطفال الآخرين ويحتال عليهم","لا يظهر اهتماماً بأعمال غيره من الأطفال","يبدو مكتئباً","يبحث عن التشجيع والمديح باستمرار","يحاول جذب انتباه زملائه عن طريق التهريج"];
+
+const D=[
+["الإفراط في لوم النفس","Excessive Self Blame",[2,5,10,14,21],[5,10],[11,17],[18,25]],
+["الإفراط في القلق","Excessive Anxiety",[23,33,37,42,49],[5,10],[11,17],[18,25]],
+["الانسحابية الزائدة","Excessive Withdrawal",[80,86,90,94,98,107],[6,12],[13,21],[22,30]],
+["الاعتمادية الزائدة","Excessive Dependency",[83,87,93,102,105,109],[6,12],[13,21],[22,30]],
+["ضعف قوة الأنا","Poor Ego Strength",[81,88,91,97,101,104,110],[7,14],[15,24],[25,35]],
+["ضعف القوة الجسمية","Poor Physical Strength",[54,59,64,71,75],[5,10],[11,17],[18,25]],
+["ضعف التآزر الحركي","Poor Coordination",[58,62,65,69,72],[5,10],[11,17],[18,25]],
+["انخفاض القدرة العقلية","Poor Intellectual Ability",[4,6,9,12,16,18,22],[7,14],[15,24],[25,35]],
+["الضعف الأكاديمي","Poor Achievement",[25,29,39,44,51],[5,10],[11,17],[18,25]],
+["ضعف الانتباه","Poor Attention",[1,7,11,15,20],[5,10],[11,17],[18,25]],
+["ضعف القدرة على ضبط النشاط","Poor Impulse Control",[26,31,35,46,52],[5,10],[11,17],[18,25]],
+["ضعف الاتصال بالواقع","Poor Reality Contact",[24,27,32,36,40,43,47,50],[8,16],[17,28],[29,40]],
+["ضعف الشعور بالهوية","Poor Sense of Identity",[56,63,68,74,78],[5,10],[11,17],[18,25]],
+["الإفراط في المعاناة","Excessive Suffering",[79,85,89,95,99,103,108],[7,14],[15,24],[25,35]],
+["الضعف في ضبط مشاعر الغضب","Poor Anger Control",[55,61,67,73,77],[5,10],[11,17],[18,25]],
+["المبالغة في الشعور بالظلم","Excessive Sense of Persecution",[3,8,13,17,19],[5,10],[11,17],[18,25]],
+["العدوانية الزائدة","Excessive Aggressive",[82,84,92,96,100,106],[6,12],[13,21],[22,30]],
+["العناد والمقاومة","Excessive Resistance",[57,60,66,70,76],[5,17],[18,25],null],
+["ضعف الانصياع الاجتماعي","Poor Social Conformity",[28,30,34,38,41,45,48,53],[8,16],[17,28],[29,40]]];
+
+const LV={lo:["غير دالة","#2e9e5b","#e6f6ec"],mdx:["دالة","#e0a800","#fdf3d7"],hi:["ذات دلالة عالية","#d64545","#fde8e8"]};
+
+let form={},ans={},sub=false,caseId=null,chart=null;
+
+let ARCHIVE=[];
+try{ARCHIVE=JSON.parse(localStorage.getItem(ARC))||[]}catch(e){ARCHIVE=[]}
+
+function idbSave(data){
+  try{
+    const rq=indexedDB.open("bbrs_db",1);
+    rq.onupgradeneeded=e=>{e.target.result.createObjectStore("st")};
+    rq.onsuccess=e=>{
+      const tx=e.target.result.transaction("st","readwrite");
+      tx.objectStore("st").put(JSON.stringify(data),"arc");
+    };
+  }catch(e){}
+}
+function idbLoad(cb){
+  try{
+    const rq=indexedDB.open("bbrs_db",1);
+    rq.onupgradeneeded=e=>{e.target.result.createObjectStore("st")};
+    rq.onsuccess=e=>{
+      try{
+        const g=e.target.result.transaction("st").objectStore("st").get("arc");
+        g.onsuccess=()=>{try{cb(JSON.parse(g.result||"[]"))}catch(_){cb([])}};
+        g.onerror=()=>cb([]);
+      }catch(e){cb([])}
+    };
+    rq.onerror=()=>cb([]);
+  }catch(e){cb([])}
+}
+function syncArc(){
+  try{localStorage.setItem(ARC,JSON.stringify(ARCHIVE))}catch(e){}
+  idbSave(ARCHIVE);
+}
+function mergeIdb(){
+  idbLoad(remote=>{
+    if(remote && remote.length){
+      const ids=new Set(ARCHIVE.map(x=>x.id));
+      let added=0;
+      remote.forEach(c=>{if(c&&c.id&&!ids.has(c.id)){ARCHIVE.push(c);added++}});
+      if(added){
+        ARCHIVE.sort((a,b)=>new Date(b.at||0)-new Date(a.at||0));
+        syncArc();
+        if(!$("sec-cases").hidden)listCases();
+        toast("🔄 استُرجعت "+added+" حالة تلقائياً من الذاكرة الدائمة",4000);
+      }
+    }
+  });
+}
+
+const nAns=()=>Object.keys(ans).length;
+function toast(m,ms=2600){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),ms)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({form,ans,sub}))}catch(e){}}
+function fmtD(iso){return iso?new Date(iso).toLocaleDateString("ar-EG",{year:"numeric",month:"long",day:"numeric"}):"—"}
+
+/* الانتقال السلس مع إعادة تشغيل الحركة */
+function show(sec){
+  ["sec-login","sec-qs","sec-wait","sec-rep","sec-cases"].forEach(s=>{
+    const el=$(s);
+    el.hidden = s!==sec;
+    el.classList.remove("re-anim");
+    void el.offsetWidth;
+    if(s===sec) el.classList.add("re-anim");
+  });
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* نافذة تأكيد الحذف داخل التطبيق */
+let delAction=null;
+function askDelete(msg,action){
+  $("delMsg").textContent=msg;
+  delAction=action;
+  $("delOv").hidden=false;
+}
+ $("delNo").onclick=()=>{$("delOv").hidden=true;delAction=null};
+ $("delOv").addEventListener("click",e=>{if(e.target===$("delOv")){$("delOv").hidden=true;delAction=null}});
+ $("delYes").onclick=()=>{
+  $("delOv").hidden=true;
+  if(delAction)delAction();
+  delAction=null;
+};
+
+/* العمر التفصيلي */
+function ageFromBirth(){
+  const b=$("f_birth").value;if(!b){$("f_age").readOnly=false;return}
+  const bd=new Date(b),nw=new Date();
+  if(isNaN(bd)||bd>nw){toast("⚠ تاريخ الميلاد غير صحيح");return}
+  let y=nw.getFullYear()-bd.getFullYear(),m=nw.getMonth()-bd.getMonth(),d=nw.getDate()-bd.getDate();
+  if(d<0){m--;d+=new Date(nw.getFullYear(),nw.getMonth(),0).getDate()}
+  if(m<0){y--;m+=12}
+  const p=(n,o,t,f,mn)=>n==0?null:n==1?n+" "+o:n==2?t:n<=10?n+" "+f:n+" "+mn;
+  $("f_age").value=[p(y,"سنة","سنتان","سنوات","سنة"),p(m,"شهر","شهران","شهور","شهر"),p(d,"يوم","يومان","أيام","يوم")].filter(Boolean).join(" و ")||"أقل من شهر";
+  $("f_age").readOnly=true;
+}
+const ageTxt=f=>!f.age||f.age==="—"?"—":(/[ء-ي]/.test(f.age)?f.age:f.age+" سنة");
+
+/* بناء الأسئلة */
+function buildQ(){
+  $("qs").innerHTML=Q.map((t,i)=>`<div class="q" data-q="${i+1}"><div class="qh"><div class="qn">${i+1}</div><div class="qt">${t}</div></div>
+  <div class="qo">${LK.map((l,v)=>`<label class="pill"><input type="radio" name="q${i+1}" value="${v+1}"><span>${l}</span></label>`).join("")}</div></div>`).join("");
+  $("qs").addEventListener("change",e=>{
+    if(!e.target.matches("input[type=radio]"))return;
+    const num=+e.target.name.slice(1);
+    ans[num]=+e.target.value;
+    const qEl=e.target.closest(".q");
+    qEl.classList.remove("bad");
+    qEl.classList.add("answered");
+    save();prog();
+  });
+}
+function prog(){
+  const d=nAns();
+  $("pTxt").textContent=`${d} / ${Q.length}`;
+  $("pBar").style.width=(d/Q.length*100)+"%";
+}
+function restoreUI(){
+  Object.keys(ans).forEach(k=>{
+    const i=document.querySelector(`input[name="q${k}"][value="${ans[k]}"]`);
+    if(i){i.checked=true;i.closest(".q").classList.add("answered")}
+  });
+  prog();
+}
+function fillForm(d){
+  if(!d)return;
+  $("f_name").value=d.childName&&d.childName!=="—"?d.childName:"";
+  if(d.gender&&d.gender!=="—"){const r=document.querySelector(`input[name="g"][value="${d.gender}"]`);if(r)r.checked=true}
+  $("f_birth").value=d.birthDate||"";$("f_age").value=d.age&&d.age!=="—"?d.age:"";
+  $("f_date").value=d.date||"";$("f_phone").value=d.phone||"";
+  if(d.source&&d.source!=="—")$("f_src").value=d.source;
+  $("f_oth").value=d.otherSource||"";$("f_prob").value=d.problemType||"";
+  toggleOth();if($("f_birth").value)ageFromBirth();
+}
+function collect(){
+  const g=document.querySelector('input[name="g"]:checked'),s=$("f_src").value;
+  return{childName:$("f_name").value.trim()||"—",gender:g?g.value:"—",birthDate:$("f_birth").value,
+    age:$("f_age").value.trim()||"—",date:$("f_date").value,source:s||"—",
+    otherSource:s==="شخص آخر"?$("f_oth").value.trim():"",phone:$("f_phone").value.trim(),problemType:$("f_prob").value.trim()};
+}
+function toggleOth(){$("fOthW").hidden=$("f_src").value!=="شخص آخر";if($("fOthW").hidden)$("f_oth").value=""}
+
+/* التصحيح */
+function results(){
+  return D.map((d,i)=>{
+    const total=d[2].reduce((s,q)=>s+(ans[q]||0),0);
+    let lv="lo";
+    if(d[5]&&total>=d[5][0])lv="hi";else if(total>=d[4][0])lv="mdx";
+    return{i,name:d[0],en:d[1],items:d[2],total,lv};
+  });
+}
+
+/* التقرير */
+function renderRep(){
+  const f=form,src=f.source==="شخص آخر"?`شخص آخر (${f.otherSource||"—"})`:f.source;
+  $("rDate").textContent=fmtD(new Date().toISOString().slice(0,10));
+  $("rMeta").innerHTML=[["اسم الطفل",f.childName||"—"],["الجنس",f.gender||"—"],
+   ["تاريخ الميلاد",f.birthDate?fmtD(f.birthDate):"—"],["عمر الطفل",ageTxt(f)],
+   ["تاريخ التطبيق",fmtD(f.date)],["مصدر المعلومات",src],
+   ["رقم الهاتف",f.phone||"—"],["نوع المشكلة",f.problemType||"—"]]
+   .map(([k,v])=>`<div class="mi"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+
+  const rs=results(),c={lo:0,mdx:0,hi:0};rs.forEach(r=>c[r.lv]++);
+  $("rSum").innerHTML=`<div class="su lo"><div class="n">${c.lo}</div><div class="t">غير دالة ✅</div></div>
+   <div class="su mdx"><div class="n">${c.mdx}</div><div class="t">دالة ⚠</div></div>
+   <div class="su hi"><div class="n">${c.hi}</div><div class="t">دلالة عالية 🚨</div></div>`;
+
+  const hn=rs.filter(r=>r.lv=="hi").map(r=>`«${r.name}»`),mn=rs.filter(r=>r.lv=="mdx").map(r=>`«${r.name}»`);
+  let t=`حصل الطفل/الطفلة <b>${f.childName||"—"}</b> (${f.gender||"—"}، ${ageTxt(f)}) على درجات <b style="color:var(--r)">ذات دلالة عالية</b> في ${c.hi} من الأبعاد، ودرجات <b style="color:var(--a)">دالة</b> في ${c.mdx} بعداً، و${c.lo} بعداً <b style="color:var(--g)">غير دالة</b>. `;
+  if(hn.length)t+=`الأبعاد ذات الدلالة العالية: ${hn.join("، ")}. `;
+  if(mn.length)t+=`الأبعاد الدالة: ${mn.join("، ")}. `;
+  t+=`وكلما ارتفعت الدرجة دلّ ذلك على حضور ملحوظ للمظاهر السلوكية التي يقيسها البُعد.`;
+  $("rTxt").innerHTML=t;
+
+  $("rBody").innerHTML=rs.map(r=>
+    `<tr class="${r.lv}"><td>${r.i+1}</td><td class="dn"><strong>${r.name}</strong><small>${r.en}</small><small>الفقرات: ${r.items.join("، ")}</small></td><td class="score">${r.total}</td><td><span class="bg ${r.lv}">${LV[r.lv][0]}</span></td></tr>`).join("");
+
+  const hi=rs.filter(r=>r.lv=="hi");
+  $("hiCard").hidden=!hi.length;
+  $("hiList").innerHTML=hi.map(r=>{
+    const rows=r.items.map(q=>`<tr><td style="font-weight:800">${q}</td><td class="qd">${Q[q-1]}</td><td><span class="rc r${ans[q]}">${ans[q]} — ${LK[ans[q]-1]}</span></td></tr>`).join("");
+    return`<div class="hb"><div class="hh">🚨 ${r.name} — الدرجة الكلية: ${r.total}</div>
+    <table class="htb"><thead><tr><th>رقم</th><th>نص الفقرة</th><th>التقدير</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).join("");
+
+  renderChart(rs);
+}
+function renderChart(rs){
+  const ctx=$("ch").getContext("2d");
+  if(chart){chart.destroy();chart=null}
+  if(typeof Chart=="undefined")return;
+  Chart.defaults.font.family="Cairo";
+  chart=new Chart(ctx,{type:"bar",data:{labels:rs.map(r=>r.name),
+    datasets:[{data:rs.map(r=>r.total),backgroundColor:rs.map(r=>LV[r.lv][1]),borderRadius:5,maxBarThickness:24}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},title:{display:true,text:"الصفحة النفسية للطالب — الدرجة مقابل الأبعاد التسعة عشر",font:{size:15,weight:"bold"},color:"#14539a"},
+        tooltip:{callbacks:{label:c=>` الدرجة: ${c.parsed.x}`}}},
+      scales:{x:{beginAtZero:true,max:40,ticks:{stepSize:5}},y:{grid:{display:false},ticks:{font:{size:11}}}}}});
+}
+
+/* ===== حفظ PDF — تاب جديد أو طباعة مباشرة ===== */
+function buildReportHTML(){
+  const clone=$("rep").cloneNode(true);
+  const cv=clone.querySelector("canvas");
+  if(cv){
+    let img="";try{img=document.getElementById("ch").toDataURL("image/png")}catch(e){}
+    if(img){
+      const im=document.createElement("img");
+      im.src=img;im.style.width="100%";im.style.maxHeight="640px";im.style.objectFit="contain";
+      cv.parentNode.replaceChild(im,cv);
+    }else cv.remove();
+  }
+  const ta=clone.querySelector("#recT");
+  if(ta){
+    const d=document.createElement("div");
+    d.className="sumt";d.style.whiteSpace="pre-wrap";
+    d.textContent=ta.value||"(لم تُدخل توصيات)";
+    ta.parentNode.replaceChild(d,ta);
+  }
+  const css=document.querySelector("style").textContent;
+  const today=fmtD(new Date().toISOString().slice(0,10));
+  return `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BBRS Report - ${form.childName||""}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+ ${css}
+.wrap{max-width:900px}body{padding:10px}
+.expbar{position:sticky;top:0;z-index:9;background:#14539a;padding:10px;display:flex;justify-content:center}
+.expbar button{border:none;border-radius:10px;padding:10px 22px;font-family:inherit;font-weight:800;font-size:1rem;cursor:pointer;background:#f2c811;color:#3a2f00}
+@media print{
+  @page{size:A4;margin:11mm}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .expbar{display:none!important}body{padding:0}
+  header{background:#14539a!important;box-shadow:inset 0 0 0 999px #14539a!important}
+  .card{box-shadow:none!important;border:1px solid #d7e0ec!important;break-inside:avoid;page-break-inside:avoid}
+  tr,.hb,.su,.mi{break-inside:avoid;page-break-inside:avoid}.cb{height:620px}
+  .res th{box-shadow:inset 0 0 0 999px #14539a!important;color:#fff!important}
+  tr.lo td{box-shadow:inset 0 0 0 999px #e6f6ec!important}
+  tr.mdx td{box-shadow:inset 0 0 0 999px #fdf3d7!important}
+  tr.hi td{box-shadow:inset 0 0 0 999px #fde8e8!important}
+  .bg.lo{box-shadow:inset 0 0 0 999px #2e9e5b!important;color:#fff!important}
+  .bg.mdx{box-shadow:inset 0 0 0 999px #e0a800!important;color:#4d3800!important}
+  .bg.hi{box-shadow:inset 0 0 0 999px #d64545!important;color:#fff!important}
+  .su.lo{box-shadow:inset 0 0 0 999px #e6f6ec!important}
+  .su.mdx{box-shadow:inset 0 0 0 999px #fdf3d7!important}
+  .su.hi{box-shadow:inset 0 0 0 999px #fde8e8!important}
+  .sumt{box-shadow:inset 0 0 0 999px #eaf2fb!important}
+  .mi{box-shadow:inset 0 0 0 999px #f6f9fd!important}
+  .hh{box-shadow:inset 0 0 0 999px #fde8e8!important;color:#d64545!important}
+  .htb th{box-shadow:inset 0 0 0 999px #fbe3e3!important}
+}
+</style></head>
+<body>
+<div class="expbar"><button onclick="window.print()">🖨 حفظ PDF — اضغط هنا ثم اختر «حفظ بصيغة PDF»</button></div>
+<header style="border-radius:0">
+  <div>
+    <h1>🧩 التقرير النفسي الشامل — مقياس بيركس لتقدير السلوك</h1>
+    <p>Burks Behavior Rating Scale (القريويت وجرار، 1987) — تاريخ الإصدار: ${today}</p>
+  </div>
+  <div style="width:52px;height:52px;border-radius:12px;background:#1e6fc0;box-shadow:inset 0 0 0 999px #1e6fc0;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid rgba(255,255,255,.5)">BBRS</div>
+</header>
+<div class="wrap">${clone.innerHTML}</div>
+<footer>مُصدَّر من تطبيق مقياس بيركس الإلكتروني — ألوان مطابقة للتطبيق مضمونة في الـ PDF</footer>
+</body></html>`;
+}
+function exportPDF(){
+  if($("rep").hidden)showRep();
+  const html=buildReportHTML();
+  let opened=false;
+  try{
+    const w=window.open("","_blank");
+    if(w && w.document){
+      w.document.open();w.document.write(html);w.document.close();
+      opened=true;
+      toast("📄 فُتح التقرير في صفحة جديدة — اضغط الزر الأصفر «حفظ PDF» داخلها",6000);
+    }
+  }catch(e){}
+  if(!opened){
+    toast("🖨 سيتم فتح نافذة الطباعة — اختر «حفظ بصيغة PDF»",5000);
+    setTimeout(()=>window.print(),700);
+  }
+}
+
+/* إخفاء / إظهار */
+function hideRep(){$("rep").hidden=true;$("sec-rep").querySelectorAll(".card").forEach((c,i)=>{if(i>0)c.hidden=true});
+  $("hidName").textContent=form.childName||"—";$("hidCard").hidden=false;window.scrollTo({top:0,behavior:"smooth"});
+  toast("🙈 تم إخفاء التقرير")}
+function showRep(){$("hidCard").hidden=true;$("rep").hidden=false;
+  $("sec-rep").querySelectorAll(".card").forEach((c,i)=>{if(i>0)c.hidden=false});
+  toast("👁 تم إظهار التقرير")}
+
+/* ترميز الإرسال */
+function payload(){
+  const f={n:form.childName,g:form.gender,b:form.birthDate,a:form.age,d:form.date,s:form.source,o:form.otherSource,p:form.phone,t:form.problemType};
+  return"BBRS-V1|"+btoa(unescape(encodeURIComponent(JSON.stringify(f))))+"|"+Q.map((_,i)=>ans[i+1]||0).join("");
+}
+function msg(){return`📩 نتيجة مقياس بيركس (BBRS)\n👶 ${form.childName||"—"}\n📅 ${fmtD(form.date)}\n\n[BBRS-START]${payload()}[BBRS-END]`}
+function parse(text){
+  try{
+    let raw="";
+    const m=(text||"").match(/\[BBRS-START\]([\s\S]+?)\[BBRS-END\]/);
+    if(m)raw=m[1];
+    else{const i=(text||"").indexOf("BBRS-V1");if(i>-1)raw=text.slice(i)}
+    raw=raw.replace(/[^A-Za-z0-9+\/=|-]/g,"");
+    if(!raw.startsWith("BBRS-V1|"))return null;
+    const p=raw.split("|");
+    if(p.length<3)return null;
+    const f=JSON.parse(decodeURIComponent(escape(atob(p[1]))));
+    const s=p[2].replace(/[^1-5]/g,"");
+    if(s.length!==Q.length)return null;
+    const a={};for(let i=0;i<s.length;i++)a[i+1]=+s[i];
+    return{formData:{childName:f.n||"—",gender:f.g||"—",birthDate:f.b||"",age:f.a||"—",date:f.d||"",source:f.s||"—",otherSource:f.o||"",phone:f.p||"",problemType:f.t||""},answers:a};
+  }catch(e){return null}
+}
+function copyText(txt,okMsg){
+  const ta=document.createElement("textarea");
+  ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";
+  document.body.appendChild(ta);
+  ta.focus();ta.select();ta.setSelectionRange(0,999999);
+  let ok=false;
+  try{ok=document.execCommand("copy")}catch(e){}
+  ta.remove();
+  if(ok)toast(okMsg,3500);
+  else toast("⚠ انسخ يدوياً: اضغط مطولاً على النص ثم «نسخ»",4500);
+}
+function copyCode(){copyText(msg(),"📋 تم النسخ — أرسله للأخصائي")}
+
+/* أرشيف الحالات */
+function listCases(){
+  const w=$("cases");
+  if(!ARCHIVE.length){
+    w.innerHTML=`<div class="none">📭 لا توجد حالات بعد<br><small>اطلب من ولي الأمر الضغط على «📤 إرسال عبر واتساب» ثم الصق الرسالة في خانة الاستيراد أعلاه</small></div>`;
+    return;
+  }
+  w.innerHTML=ARCHIVE.map(c=>{
+    const n=Object.keys(c.answers||{}).length;
+    return`<div class="case" data-id="${c.id}"><div><b>👶 ${c.formData?.childName||"بدون اسم"}</b>
+    <small>📅 ${fmtD((c.at||"").slice(0,10))} — 📝 ${n}/${Q.length} ${n>=Q.length?"✅":""}</small></div>
+    <div class="cbtns"><button class="btn bp bs bOpen">👁 عرض</button><button class="btn bd bs bDel">🗑</button></div></div>`;
+  }).join("");
+}
+function openCase(id){
+  const c=ARCHIVE.find(x=>x.id===id);if(!c)return;
+  caseId=id;form=c.formData||{};ans=c.answers||{};
+  $("recT").value=c.rec||"";
+  renderRep();showRep();show("sec-rep");
+  toast("👁 تقرير: "+(form.childName||"—"));
+}
+ $("cases").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  const id=b.closest(".case")?.dataset.id;if(!id)return;
+  if(b.classList.contains("bDel")){
+    askDelete("سيتم حذف حالة «"+(ARCHIVE.find(x=>x.id===id)?.formData?.childName||"—")+"» نهائياً.",()=>{
+      ARCHIVE=ARCHIVE.filter(x=>x.id!==id);
+      syncArc();listCases();toast("🗑 تم حذف الحالة");
+    });
+  }else openCase(id);
+});
+
+/* ===== النسخة الاحتياطية بالنص ===== */
+function backupText(){return JSON.stringify({app:"BBRS-BK",cases:ARCHIVE})}
+function showBackup(){
+  if(!ARCHIVE.length){toast("⚠ لا توجد حالات لعمل نسخة احتياطية");return}
+  $("bkTitle").textContent="💾 نسخة احتياطية ("+ARCHIVE.length+" حالة)";
+  $("bkHint").innerHTML="اضغط «نسخ كل النص» ثم الصقه في واتساب لنفسك أو أي ملاحظات.<br>ولو النسخ لم يعمل: اضغط مطولاً على النص واختر «نسخ».";
+  $("bkText").value=backupText();
+  $("bkText").readOnly=true;
+  $("bkCopy").hidden=false;$("bkDo").hidden=true;
+  $("bkOv").hidden=false;
+}
+function showRestore(){
+  $("bkTitle").textContent="📂 استعادة من نص";
+  $("bkHint").innerHTML="الصق نص النسخة الاحتياطية ثم اضغط «استعادة».<br>لن تُفقد الحالات الموجودة — ستُضاف إليها.";
+  $("bkText").value="";$("bkText").readOnly=false;
+  $("bkCopy").hidden=true;$("bkDo").hidden=false;
+  $("bkOv").hidden=false;
+  setTimeout(()=>$("bkText").focus(),80);
+}
+function doRestore(){
+  try{
+    const d=JSON.parse($("bkText").value);
+    const cases=d.cases||d;
+    if(!Array.isArray(cases))throw 0;
+    const ids=new Set(ARCHIVE.map(x=>x.id));
+    let added=0;
+    cases.forEach(c=>{if(c&&c.id&&!ids.has(c.id)){ARCHIVE.push(c);added++}});
+    ARCHIVE.sort((a,b)=>new Date(b.at||0)-new Date(a.at||0));
+    syncArc();listCases();
+    $("bkOv").hidden=true;
+    toast(added?"✅ تم استعادة "+added+" حالة":"✅ النسخة مطابقة للحالات الموجودة",4000);
+  }catch(e){
+    toast("❌ النص غير صالح — تأكد من نسخ النسخة الاحتياطية كاملة",4500);
+  }
+}
+ $("bBkShow").onclick=showBackup;
+ $("bBkRestore").onclick=showRestore;
+ $("bkCopy").onclick=()=>copyText($("bkText").value,"📋 تم النسخ — الصقه في واتساب لنفسك");
+ $("bkDo").onclick=doRestore;
+ $("bkClose").onclick=()=>$("bkOv").hidden=true;
+ $("bkOv").addEventListener("click",e=>{if(e.target===$("bkOv"))$("bkOv").hidden=true});
+
+/* أدمن */
+ $("bAdmin").onclick=()=>{$("mPass").hidden=false;$("pass").value="";$("pErr").hidden=true;setTimeout(()=>$("pass").focus(),60)};
+ $("pCancel").onclick=()=>$("mPass").hidden=true;
+ $("mPass").addEventListener("click",e=>{if(e.target===$("mPass"))$("mPass").hidden=true});
+ $("pGo").onclick=()=>{
+  if($("pass").value===PASS){$("mPass").hidden=true;listCases();show("sec-cases");toast("🔓 مرحباً — "+ARCHIVE.length+" حالة محفوظة")}
+  else{$("pErr").hidden=false;$("pass").value=""}
+};
+ $("pass").addEventListener("keydown",e=>{if(e.key==="Enter")$("pGo").click()});
+
+/* ★ زرار الرجوع من لوحة الأدمن: للتقرير إن وجد وإلا لبيانات الطفل */
+ $("bAdminBack").onclick=()=>{
+  if(sub && Object.keys(ans).length===Q.length && Object.keys(form).length){
+    renderRep();showRep();show("sec-rep");
+    toast("🔙 عودة إلى التقرير");
+  }else{
+    show("sec-login");
+    toast("🔙 رجوع إلى بيانات الطفل");
+  }
+};
+
+/* الاستيراد */
+ $("bImp").onclick=()=>{
+  const p=parse($("impBox").value);
+  if(!p){toast("❌ الكود غير صالح — الصق رسالة واتساب كاملة كما وصلتك",4000);return}
+  const id="c"+Date.now();
+  ARCHIVE.unshift({id,at:new Date().toISOString(),formData:p.formData,answers:p.answers,rec:""});
+  syncArc();
+  $("impBox").value="";
+  openCase(id);
+  toast("✅ الحالة محفوظة دائماً على هذا الجهاز",3500);
+};
+
+/* أحداث */
+ $("f_src").addEventListener("change",toggleOth);
+ $("f_birth").addEventListener("change",ageFromBirth);
+ $("bStart").onclick=()=>{
+  form=collect();ans={};sub=false;caseId=null;save();
+  show("sec-qs");prog();
+  toast("✅ أجب عن جميع الفقرات ثم اضغط (تم)");
+};
+ $("bDone").onclick=()=>{
+  const miss=[];for(let i=1;i<=Q.length;i++)if(!ans[i])miss.push(i);
+  if(miss.length){miss.forEach(n=>document.querySelector(`.q[data-q="${n}"]`).classList.add("bad"));
+    toast(`⚠ ${miss.length} فقرة دون إجابة — أول ناقصة رقم ${miss[0]}`);return}
+  sub=true;$("wName").textContent=form.childName||"—";save();
+  ARCHIVE.unshift({id:"c"+Date.now(),at:new Date().toISOString(),formData:form,answers:ans,rec:""});
+  syncArc();
+  show("sec-wait");
+  toast("✅ تم — أرسل النتيجة للأخصائي عبر واتساب",4000);
+};
+ $("bWa").onclick=()=>{
+  const p=ADMIN_PHONE?`https://wa.me/${ADMIN_PHONE.replace(/[^0-9]/g,"")}`:"https://wa.me/";
+  window.open(p+"?text="+encodeURIComponent(msg()),"_blank");
+};
+ $("bCopy").onclick=copyCode;
+ $("bExp").onclick=exportPDF;
+ $("bHide").onclick=hideRep;
+ $("bShow").onclick=showRep;
+ $("bBack").onclick=()=>{caseId=null;listCases();show("sec-cases")};
+
+/* الحذف عبر نافذة التأكيد الداخلية */
+const delCase=()=>{
+  if(caseId){
+    askDelete("سيتم حذف حالة «"+(form.childName||"—")+"» نهائياً مع جميع الإجابات والتقرير.",()=>{
+      ARCHIVE=ARCHIVE.filter(x=>x.id!==caseId);
+      syncArc();caseId=null;listCases();show("sec-cases");
+      toast("🗑 تم حذف الحالة");
+    });
+    return;
+  }
+  askDelete("سيتم حذف هذه الحالة نهائياً مع جميع الإجابات ولا يمكن استرجاعها.",()=>{
+    try{localStorage.removeItem(KEY)}catch(e){}
+    location.reload();
+  });
+};
+ $("bDel1").onclick=delCase;$("bDel2").onclick=delCase;
+ $("recT").addEventListener("input",()=>{
+  if(caseId){const c=ARCHIVE.find(x=>x.id===caseId);if(c){c.rec=$("recT").value;syncArc()}}
+  else save();
+});
+
+/* البداية */
+(function(){
+  $("f_date").value=new Date().toISOString().slice(0,10);
+  buildQ();
+  try{
+    const st=JSON.parse(localStorage.getItem(KEY));
+    if(st){form=st.form||{};ans=st.ans||{};sub=!!st.sub;fillForm(form);restoreUI()}
+  }catch(e){}
+  mergeIdb();
+  if(sub){$("wName").textContent=form.childName||"—";show("sec-wait")}
+  else show("sec-login");
+})();
+</script>
+
+
+			
+		
+</body></html>
